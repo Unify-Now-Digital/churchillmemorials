@@ -86,7 +86,7 @@ Standard GHL contact fields (API names) + recommended custom fields.
 | `email` | standard | Email | **dedupe key** — upsert on email |
 | `phone` | standard | Phone | E.164 normalise (`+44…`) |
 | `source` | standard | — | constant: `Website – Request a Quote` |
-| `tags` | standard | — | add `website-quote`, `new-enquiry` |
+| `tags` | standard | — | add **`raq`** (existing GHL tag), plus `new-enquiry` |
 | `cf_grave_location` | custom | Grave Location | free text |
 | `cf_grave_number` | custom | Grave Number | often blank |
 

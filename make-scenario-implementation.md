@@ -58,6 +58,35 @@ Behaviour:
   (only *open* opps count), so real new jobs still create.
 - Two RAQs in the **same 15-min batch** may both slip through (GHL indexing lag) — rare.
 
+## Update 3 (26 Jul 2026) — fix write connection (contacts were not landing)
+
+Root cause of "leads don't appear in GHL": the two **write** modules were pointed at the
+wrong GHL door.
+
+- **Create Contact (module 5)** and **Create Opportunity (module 2)** were using connection
+  `686351` — *"GHL Churchill Memorials"*, a **Company-level (Deprecated)** connection with no
+  location scope. Writes through it were being rejected/misfiled — and both modules had a
+  `builtin:Ignore` on error, so every run still reported **success** and the failures were
+  invisible.
+- The de-dupe search (module 6) was already correctly using `2100612` — the **Location OAuth**
+  connection for the *Churchill Memorials* location (`JyUmi1MPcqhO5tMqwJMk`) — so contacts and
+  the de-dupe lookup were operating in different places.
+
+**Changes applied (scenario re-validated `isinvalid: false`, active, 900s schedule preserved):**
+- Module 5 `__IMTCONN__`: `686351` → **`2100612`** (Location OAuth, Churchill Memorials).
+- Module 2 `__IMTCONN__`: `686351` → **`2100612`**.
+- Removed the `builtin:Ignore` onerror handlers from modules 5 and 2 so genuine GHL rejections
+  now surface as failed runs instead of hiding behind green.
+- Module 6 keeps its `builtin:Resume` (de-dupe must still fail-open).
+- Confirmed compatible: `highlevel:universal` (module 6) already binds `2100612`, so the
+  `highlevel` create modules accept it too.
+
+Rollback: revert modules 5 & 2 `__IMTCONN__` to `686351` and re-add the two `builtin:Ignore`
+handlers.
+
+**Still outstanding:** the ~38 genuine July RAQs (see `backrun-recent-raqs.md`) were a dry run
+and were never pushed — they need a one-off backfill into the Churchill Memorials location.
+
 ## Notes / possible follow-ups
 - Opportunity value is the **website estimate and excludes the cemetery permit fee** — the
   team confirms the real quote before invoicing.

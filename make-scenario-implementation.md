@@ -38,11 +38,31 @@ scenario, no duplicate leads).
 Blueprint re-fetched after save: `isinvalid: false`, scenario active, schedule preserved
 (indefinitely / 900s). Changes confirmed present in modules 5 and 2.
 
+## Update 2 (26 Jul 2026) — opportunity de-dupe
+
+Added a lookup so a repeat RAQ from the same contact **does not create a second open
+opportunity** (the true-duplicate + design-comparison cases from the audit).
+
+- **New module 6 — GHL API call** (`highlevel:universal`, conn `2100612` = GHL Churchill
+  Memorials 2 / location OAuth): `GET /opportunities/search?location_id=JyUmi1MPcqhO5tMqwJMk
+  &contact_id={{5.id}}&pipeline_id=xOo8LQfxd7iZUzkuLswI&status=open` (header `Version: 2021-07-28`).
+- **Opportunity create (module 2) filter:** runs only when
+  `length(6.body.opportunities) = 0` — i.e. no existing *open* opportunity for that contact
+  in the 2024 pipeline.
+- **Fail-open:** module 6 has a `builtin:Resume` on error, so if the lookup ever fails, the
+  opportunity is still created — a genuine new lead is never silently dropped.
+
+Behaviour:
+- Blocks a 2nd open opportunity for the same contact (Bull #9903/#9904; comparison pairs).
+- A returning customer whose previous opportunity was already **won/lost** is NOT blocked
+  (only *open* opps count), so real new jobs still create.
+- Two RAQs in the **same 15-min batch** may both slip through (GHL indexing lag) — rare.
+
 ## Notes / possible follow-ups
 - Opportunity value is the **website estimate and excludes the cemetery permit fee** — the
   team confirms the real quote before invoicing.
-- Same-customer design-comparison RAQs (see `backrun-recent-raqs.md`) still create one
-  opportunity each; collapsing those to a single opportunity would need a GHL
-  search-contact step before create — not included in this edit.
 - To land RAQs at a "New Enquiry" stage instead of "Quote Sent", swap the `stageId` once
   the correct stage ID is confirmed from the 2024 pipeline.
+- Data-quality watch items from the format sweep (48 quotes): 3 phone numbers are
+  non-UK/short (#9978 & #9979 = same US number, #9930 = 8 digits); several first names
+  carry a trailing space; #9965 last name stored as `O\'Shea`. Emails are 100% valid.
